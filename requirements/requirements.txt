@@ -1,0 +1,14 @@
+gradio
+pdfplumber
+beautifulsoup4
+chardet
+langdetect
+sentence-transformers
+torch
+transformers
+duckduckgo-search
+requests
+langchain
+chromadb
+pydantic
+json-log-formatter

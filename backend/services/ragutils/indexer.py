@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-from embedder import EmbeddingService
-from segment import CustomSegment
+from services.ragutils.embedder import EmbeddingService
+from services.ragutils.segment import CustomSegment
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -12,7 +12,9 @@ import asyncio
 import json
 import logging
 import os
+import sys
 
+sys.path.append(os.path.abspath(os.path.join(__file__, "../../")))
 from services.ragutils.web_search import (
     DuckDuckGoSearchService,
 )

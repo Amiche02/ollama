@@ -17,7 +17,7 @@ def fetch_models():
     """
     try:
         # Add timeout to address B113
-        response = requests.get(OLLAMA_MODELS_URL, timeout=10)
+        response = requests.get(OLLAMA_MODELS_URL, timeout=60)
         response.raise_for_status()
     except requests.RequestException as e:
         raise ConnectionError(f"Error fetching models from Ollama: {e}")
@@ -44,7 +44,7 @@ def chat_with_model(model_name, prompt):
     try:
         # Add timeout to address B113
         with requests.post(
-            OLLAMA_CHAT_URL, json=payload, headers=headers, stream=True, timeout=10
+            OLLAMA_CHAT_URL, json=payload, headers=headers, stream=True, timeout=60
         ) as r:
             r.raise_for_status()
 

@@ -11,4 +11,6 @@ wheels/
 
 project_structure.json
 
-./outputs
+outputs
+outputs/docs
+outputs/search

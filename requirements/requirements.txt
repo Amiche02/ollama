@@ -1,14 +1,4 @@
-gradio
-pdfplumber
-beautifulsoup4
-chardet
-langdetect
-sentence-transformers
-torch
-transformers
-duckduckgo-search
+pyfiglet
+pytest
 requests
-langchain
-chromadb
-pydantic
-json-log-formatter
+types-requests

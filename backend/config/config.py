@@ -3,6 +3,58 @@ Configuration constants or environment variables for the Ollama application.
 """
 
 import os
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
+
+class EmbeddingModelConfig(BaseModel):
+    name: str
+    language: Optional[List[str]] = None
+    model_path: str
+    description: Optional[str] = None
+
+
+class FileTypeConfig(BaseModel):
+    supported_extensions: List[str]
+    extraction_methods: dict
+
+
+class TextExtractorConfig(BaseModel):
+    extraction_settings: FileTypeConfig
+    temp_upload_dir: str = Field(
+        "./temp_uploads", description="Directory to store temporary file uploads."
+    )
+
+
+# Configuration for text extraction
+TEXT_EXTRACTOR_CONFIG = TextExtractorConfig(
+    extraction_settings=FileTypeConfig(
+        supported_extensions=["pdf", "txt", "md", "html"],
+        extraction_methods={
+            "pdf": "extract_text_from_pdf",
+            "txt": "extract_text_from_text",
+            "md": "extract_text_from_text",
+            "html": "extract_text_from_html",
+        },
+    )
+)
+
+# Define available embedding models
+AVAILABLE_EMBEDDING_MODELS = [
+    {
+        "name": "paraphrase-multilingual-MiniLM-L12-v2",
+        "language": ["en", "fr", "it", "es", "de", "zh", "ja", "ru", "ar"],
+        "model_path": "paraphrase-multilingual-MiniLM-L12-v2",
+        "description": "A multilingual model supporting multiple languages.",
+    },
+    {
+        "name": "all-MiniLM-L12-v2",
+        "language": ["en"],
+        "model_path": "all-MiniLM-L12-v2",
+        "description": "An English-only model optimized for speed and accuracy.",
+    },
+]
 
 # You can set these via environment variables or just hardcode them.
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")

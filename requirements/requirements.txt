@@ -2,3 +2,17 @@ pyfiglet
 pytest
 requests
 types-requests
+
+gradio
+pdfplumber
+beautifulsoup4
+chardet
+langdetect
+sentence-transformers
+torch
+transformers
+duckduckgo-search
+langchain
+chromadb
+pydantic
+json-log-formatter

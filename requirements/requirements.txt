@@ -1,18 +1,33 @@
+# Core utilities
 pyfiglet
 pytest
 requests
 types-requests
+httpx
 
+# FastAPI and Web Server
+fastapi
+uvicorn
+
+# UI and Interface
 gradio
+
+# PDF and Web Scraping
 pdfplumber
 beautifulsoup4
 chardet
 langdetect
+
+# Machine Learning & NLP
 sentence-transformers
 torch
 transformers
+
+# Search and Retrieval
 duckduckgo-search
 langchain
 chromadb
+
+# Data Validation and Logging
 pydantic
 json-log-formatter

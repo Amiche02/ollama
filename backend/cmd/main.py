@@ -1,14 +1,16 @@
 """
-Entry point for the Python Ollama Brainstorming Chat CLI.
+CLI entry point for local testing of Ollama Brainstorming Chat.
+Now requires user to pick from the dynamically fetched models (no default).
 """
 
+import asyncio
 import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(__file__, "../../")))
 
 from config.config import SYSTEM_PROMPT
-from services.ollama import chat_with_model, fetch_models
+from services.ollama import async_chat_with_model, fetch_models
 
 try:
     import pyfiglet
@@ -17,76 +19,83 @@ except ImportError:
 
 
 def display_ascii_logo():
-    """Display an ASCII logo similar to the Go version's figure.NewColorFigure."""
+    """Display an ASCII logo for the CLI."""
     if pyfiglet:
         ascii_banner = pyfiglet.figlet_format("HELLO PULSE")
         print(ascii_banner)
     else:
-        # Fallback if pyfiglet is not installed
         print("HELLO PULSE")
     print("🚀 Welcome to HELLO PULSE AI Chat")
-    print("🧠 Powered by Python and Ollama API")
+    print("🧠 Powered by Python + Ollama")
     print("-------------------------------------------------\n")
 
 
-def main():
+async def main_async():
     display_ascii_logo()
 
-    # Fetch the models
+    # Dynamically fetch models from Ollama
     try:
-        models = fetch_models()
+        models = await fetch_models()
     except ConnectionError as e:
         print(f"❌ {e}")
         sys.exit(1)
 
     if not models:
-        print(
-            "❌ Aucun modèle trouvé. Vérifiez qu'Ollama est bien en cours d'exécution."
-        )
+        print("❌ No models found. Ensure Ollama is running and has models.")
         sys.exit(1)
 
-    print("📌 Modèles disponibles :")
+    print("📌 Models currently available in Ollama:")
     for i, model in enumerate(models):
         print(f"{i+1}: {model}")
 
-    # Let user choose a model
-    choice = input("\nSélectionnez un modèle : ")
+    # Let user pick
+    choice = input("\nSelect a model by number: ")
     try:
-        choice_idx = int(choice) - 1
-        selected_model = models[choice_idx]
-    except (ValueError, IndexError):
-        print("❌ Choix invalide.")
+        idx = int(choice) - 1
+        if idx < 0 or idx >= len(models):
+            raise ValueError
+        selected_model = models[idx]
+    except ValueError:
+        print("❌ Invalid choice.")
         sys.exit(1)
 
-    print(f"\n✅ Modèle sélectionné : {selected_model}")
-    print("\n💬 Brainstorming Chatbot (Tapez 'exit' pour quitter)")
+    print(f"\n✅ Model selected: {selected_model}")
+    print("\n💬 Brainstorming Chatbot (type 'exit' to quit)")
 
-    # Initialize conversation history
+    # Start conversation
     conversation_history = f"System: {SYSTEM_PROMPT}"
 
     while True:
-        user_input = input("\n👤 Vous : ").strip()
-
+        user_input = input("\n👤 You: ").strip()
         if user_input.lower() == "exit":
-            print("\n👋 À bientôt !")
+            print("\n👋 Bye!")
             break
 
-        # Add user message to conversation
+        # Add user turn
         conversation_history += f"\nUser: {user_input}"
 
-        # Stream AI response
-        print("\n🧠 Animateur IA : ", end="", flush=True)
+        # Stream response
+        print("\n🧠 AI: ", end="", flush=True)
 
-        ai_response_accumulator = []
-        for chunk in chat_with_model(selected_model, conversation_history):
-            print(chunk, end="", flush=True)
-            ai_response_accumulator.append(chunk)
+        chunks_collected = []
+        try:
+            async for chunk in async_chat_with_model(
+                selected_model, conversation_history
+            ):
+                print(chunk, end="", flush=True)
+                chunks_collected.append(chunk)
+        except Exception as e:
+            print(f"[ERROR] {str(e)}")
+            continue
 
-        ai_response_text = "".join(ai_response_accumulator)
-        print()  # New line after the streamed response
+        ai_text = "".join(chunks_collected)
+        print()  # newline
+        # Add to conversation
+        conversation_history += f"\nAI: {ai_text}"
 
-        # Add AI's full response to conversation history
-        conversation_history += f"\nAI: {ai_response_text}"
+
+def main():
+    asyncio.run(main_async())
 
 
 if __name__ == "__main__":

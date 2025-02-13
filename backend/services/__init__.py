@@ -1,3 +1,3 @@
-from .ollama import chat_with_model, fetch_models
+from .ollama import async_chat_with_model, fetch_models
 
-__all__ = ["chat_with_model", "fetch_models"]
+__all__ = ["async_chat_with_model", "fetch_models"]

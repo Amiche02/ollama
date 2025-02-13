@@ -1,6 +1,5 @@
 import pytest
-
-from backend.services.ollama import chat_with_model, fetch_models
+from services.ollama import chat_with_model, fetch_models
 
 
 @pytest.mark.skip(reason="Requires a running Ollama server on localhost:11434")

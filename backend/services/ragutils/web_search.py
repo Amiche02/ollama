@@ -1,4 +1,3 @@
-import re
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
@@ -60,18 +59,23 @@ class DuckDuckGoSearchService(WebSearchService):
         try:
             resp = requests.get(url, headers=headers, timeout=10)
             resp.raise_for_status()
-        except Exception as e:
+        except requests.RequestException as e:
             print(f"Error fetching {url}: {e}")
             return ""
 
         soup = BeautifulSoup(resp.content, "lxml")
-        # Remove scripts and styles
-        for tag in soup(["script", "style"]):
-            tag.decompose()
 
-        text = soup.get_text(separator="\n")
-        # Reduce multiple newlines
-        text = re.sub(r"\n\s*\n+", "\n\n", text).strip()
+        # Remove scripts and styles
+        for tag in soup(["script", "style", "noscript", "meta", "link"]):
+            tag.extract()
+
+        text = soup.get_text(separator="\n").strip()
+
+        # Ensure text is meaningful (avoid empty text)
+        if len(text) < 100:  # Can be adjusted
+            print(f"⚠️ Skipping {url} (too little text extracted)")
+            return ""
+
         return text
 
     def search_and_scrape(self, query: str) -> List[Dict]:

@@ -61,6 +61,10 @@ clean:
 	@rm -rf build dist
 	@find . -name '*.egg-info' -type d -exec rm -r {} +
 	@rm -rf project_structure.json
+	@rm -rf .mypy_cache
+	@rm -rf .pytest_cache
+	@rm -rf .ruff_cache
+	@rm -rf outputs
 
 # ❌ Remove virtual environments (Conda & UV)
 clean_env:

@@ -1,3 +1,8 @@
+from .chroma_service import (
+    get_chroma_collection,
+    query_by_embedding,
+    upsert_documents_with_embeddings,
+)
 from .embedder import EmbeddingModel, EmbeddingService
 from .indexer import Indexer
 from .segment import CustomSegment
@@ -18,4 +23,7 @@ __all__ = [
     "ExtractionResult",
     "WebSearchService",
     "DuckDuckGoSearchService",
+    "get_chroma_collection",
+    "upsert_documents_with_embeddings",
+    "query_by_embedding",
 ]

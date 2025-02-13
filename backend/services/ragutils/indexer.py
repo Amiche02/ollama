@@ -1,10 +1,10 @@
 import asyncio
 import logging
 
+from services.ragutils.chroma_service import upsert_documents_with_embeddings
 from services.ragutils.embedder import EmbeddingService
 from services.ragutils.segment import CustomSegment
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -29,14 +29,11 @@ class Indexer:
         self, document_id: str, text: str, metadata: dict
     ) -> dict:
         """
-        Asynchronously processes a single document.
-        Args:
-            document_id (str): Unique identifier for the document.
-            text (str): Full text of the document.
-            metadata (dict): Metadata for the document (e.g., title, tags).
-
-        Returns:
-            dict: Indexed data containing chunks, embeddings, and metadata.
+        Asynchronously processes a single document by:
+          1) Segmenting
+          2) Embedding
+          3) (NEW) Upserting into Chroma
+          4) Returning an indexed_data dict
         """
         logger.info(f"Processing document: {document_id}")
 
@@ -44,19 +41,47 @@ class Indexer:
         chunks = self.segmenter.hybrid_segmentation(text)
         logger.info(f"Document {document_id} segmented into {len(chunks)} chunks.")
 
+        # Check if no chunks => skip upsert entirely
+        if not chunks:
+            logger.warning(
+                f"Document {document_id} has 0 chunks. Skipping embed/upsert."
+            )
+            # You can return an empty dict or some minimal info:
+            return {
+                "document_id": document_id,
+                "chunks": [],
+            }
+
         # Step 2: Generate embeddings for each chunk asynchronously
         embeddings = await self.embedder.get_embeddings(chunks)
         logger.info(f"Generated embeddings for document {document_id}.")
 
-        # Step 3: Organize data for storage
+        # OPTIONAL: Upsert to Chroma
+        # Build some metadata list, IDs, etc.
+        # e.g. each chunk uses the same base metadata
+        chunk_metadatas = []
+        chunk_ids = []
+        for i, chunk_text in enumerate(chunks):
+            chunk_metadatas.append({**metadata, "chunk_index": i})
+            chunk_ids.append(f"{document_id}_{i}")
+
+        # Actually upsert
+        upsert_documents_with_embeddings(
+            texts=chunks,
+            embeddings=embeddings,
+            metadatas=chunk_metadatas,
+            ids=chunk_ids,
+        )
+
+        # Step 3: Also build an internal data structure to return
         indexed_data = {
             "document_id": document_id,
             "chunks": [
                 {
                     "chunk_index": idx,
                     "content": chunk,
-                    "embedding": embedding,
-                    "metadata": metadata,
+                    "embedding": embedding,  # if you still want to store in your python dict
+                    "metadata": chunk_metadatas[idx],
                 }
                 for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings))
             ],
@@ -69,10 +94,10 @@ class Indexer:
         """
         Asynchronously indexes multiple documents.
         Args:
-            documents (list): List of documents, where each document is a dict containing:
-                - document_id (str): Unique identifier for the document.
-                - text (str): Full text of the document.
-                - metadata (dict): Metadata for the document.
+            documents (list): each dict includes:
+                - document_id (str)
+                - text (str)
+                - metadata (dict)
 
         Returns:
             list: List of indexed data for all documents.

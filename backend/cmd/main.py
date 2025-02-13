@@ -2,7 +2,10 @@
 Entry point for the Python Ollama Brainstorming Chat CLI.
 """
 
+import os
 import sys
+
+sys.path.append(os.path.abspath(os.path.join(__file__, "../../")))
 
 from config.config import SYSTEM_PROMPT
 from services.ollama import chat_with_model, fetch_models

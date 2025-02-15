@@ -16,3 +16,5 @@ outputs/docs
 outputs/search
 
 chroma_db
+
+backend/docs

@@ -65,6 +65,8 @@ clean:
 	@rm -rf .pytest_cache
 	@rm -rf .ruff_cache
 	@rm -rf outputs
+	@rm -rf backend/docs
+	@rm -rf backend/chroma_db
 
 # ❌ Remove virtual environments (Conda & UV)
 clean_env:

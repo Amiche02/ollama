@@ -9,9 +9,6 @@ httpx
 fastapi
 uvicorn
 
-# UI and Interface
-gradio
-
 # PDF and Web Scraping
 pdfplumber
 beautifulsoup4
@@ -22,6 +19,7 @@ langdetect
 sentence-transformers
 torch
 transformers
+nltk
 
 # Search and Retrieval
 duckduckgo-search

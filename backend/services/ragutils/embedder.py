@@ -12,6 +12,13 @@ from sentence_transformers import SentenceTransformer
 # Ensure consistent results from langdetect
 DetectorFactory.seed = 0
 
+# # Use GPU if available
+# DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# Force use cpu only
+DEVICE = "cpu"
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -57,7 +64,7 @@ class EmbeddingService:
                 logger.info(f"Loading SentenceTransformer model: {model.name}")
                 st_model = SentenceTransformer(
                     model.model_path,
-                    device="cuda" if torch.cuda.is_available() else "cpu",
+                    device=DEVICE,
                 )
                 self.models[model.name] = st_model
             except Exception as e:

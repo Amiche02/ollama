@@ -17,9 +17,9 @@
     RUN pip install --upgrade pip
     RUN pip install --no-cache-dir -r requirements.txt
 
-# -------------------------
-# 2) Final Stage
-# -------------------------
+    # -------------------------
+    # 2) Final Stage
+    # -------------------------
     FROM python:3.11-slim
 
     # Create a non-root user for better security
@@ -30,6 +30,9 @@
 
     # Copy installed dependencies from builder stage
     COPY --from=builder /usr/local /usr/local
+
+    # Copier tout le dossier `backend/` dans `/app`
+    COPY backend/ /app/
 
     # Expose the port (default for uvicorn is 8000)
     EXPOSE 8000

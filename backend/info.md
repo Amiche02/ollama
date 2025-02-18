@@ -94,20 +94,6 @@ curl -X POST "http://127.0.0.1:8000/websearch/search/" \
 curl -X GET "http://127.0.0.1:8000/chat/available_models/"
 ```
 
-### 💬 **Send a Message to AI Model**
-```sh
-curl -X POST "http://127.0.0.1:8000/chat/message/" \
-     -H "Content-Type: application/json" \
-     -d '{"model_name": "your_model_name", "user_message": "Hello!"}'
-```
-
-### 🔄 **Stream AI Response via SSE**
-```sh
-curl -X POST "http://127.0.0.1:8000/chat/message_sse/" \
-     -H "Content-Type: application/json" \
-     -d '{"model_name": "your_model_name", "user_message": "Hello!"}'
-```
-
 ### 🗂 **Get Chat History**
 ```sh
 curl -X GET "http://127.0.0.1:8000/chat/history/"

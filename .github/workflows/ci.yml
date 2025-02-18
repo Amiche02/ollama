@@ -12,7 +12,7 @@ on:
 
 jobs:
   lint-test:
-    name: Run Pre-Commit, Linting & Tests
+    name: Run Linting, Typing & Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +28,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements/requirements.txt
-          pip install pre-commit mypy pytest requests types-requests
+          pip install -r requirements/requirements.dev.txt
 
       - name: Run Pre-Commit Hooks
         run: pre-commit run --all-files

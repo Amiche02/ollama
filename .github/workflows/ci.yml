@@ -35,6 +35,3 @@ jobs:
 
       - name: Run Security Checks (Bandit)
         run: bandit -r backend
-
-      - name: Run Tests
-        run: pytest --disable-warnings

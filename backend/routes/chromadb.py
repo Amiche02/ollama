@@ -85,7 +85,7 @@ async def delete_document_from_chromadb(filename: str):
                 status_code=404, detail="No documents found in ChromaDB."
             )
 
-        # ✅ Extract all IDs associated with the filename
+        # Extract all IDs associated with the filename
         chunk_ids = []
         for i, meta in enumerate(results["metadatas"]):
             if meta.get("filename") == filename:
@@ -98,7 +98,7 @@ async def delete_document_from_chromadb(filename: str):
                 status_code=404, detail=f"No indexed chunks found for '{filename}'."
             )
 
-        # ✅ Delete the identified chunks
+        # Delete the identified chunks
         collection.delete(ids=chunk_ids)
 
         return {"message": f"Deleted all indexed chunks for '{filename}'."}

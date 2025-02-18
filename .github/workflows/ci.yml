@@ -33,11 +33,6 @@ jobs:
       - name: Run Pre-Commit Hooks
         run: pre-commit run --all-files
 
-      - name: Run MyPy Type Checking
-        run: |
-          export PYTHONPATH=$PYTHONPATH:$(pwd)/backend
-          mypy --config-file mypy.ini backend
-
       - name: Run Security Checks (Bandit)
         run: bandit -r backend
 

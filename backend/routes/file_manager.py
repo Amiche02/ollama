@@ -8,11 +8,12 @@ import os
 import re
 from typing import List
 
+from config.config import TEXT_EXTRACTOR_CONFIG
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 router = APIRouter(prefix="/docs", tags=["Documents"])
 
-UPLOAD_DIR = "docs/uploads"
+UPLOAD_DIR = TEXT_EXTRACTOR_CONFIG.temp_upload_dir
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Limit the number of files that can be uploaded per request
@@ -26,9 +27,7 @@ def sanitize_filename(filename: str) -> str:
     - Replaces special characters with underscores.
     - Removes multiple consecutive underscores.
     """
-    filename = os.path.basename(
-        filename
-    )  # Extract only the filename from the full path
+    filename = os.path.basename(filename or "")  # Ensure filename is always a string
     filename = filename.lower()  # Convert to lowercase
     filename = re.sub(r"[^\w\d\-_\.]", "_", filename)  # Replace invalid characters
     filename = re.sub(r"_+", "_", filename)  # Remove multiple underscores
@@ -38,18 +37,11 @@ def sanitize_filename(filename: str) -> str:
 @router.post("/upload/")
 async def upload_documents(files: List[UploadFile] = File(...)):
     """
-    Upload multiple documents to the 'uploads/' folder.
+    Upload multiple documents to the configured upload folder.
 
     1. Prevent duplicate file names
     2. Limit total files in a single request to MAX_FILES_PER_UPLOAD
     3. Sanitize filenames for safe usage
-
-    **Example cURL request:**
-    ```bash
-    curl -X POST "http://127.0.0.1:8000/docs/upload/" \
-         -F "files=@/path/to/file1.pdf" \
-         -F "files=@/path/to/file2.txt"
-    ```
     """
     if len(files) > MAX_FILES_PER_UPLOAD:
         raise HTTPException(
@@ -81,7 +73,7 @@ async def upload_documents(files: List[UploadFile] = File(...)):
 @router.get("/list/")
 async def list_documents():
     """
-    List all documents in the 'uploads/' folder.
+    List all documents in the configured upload folder.
     """
     files = os.listdir(UPLOAD_DIR)
     return {"documents": files}
@@ -90,7 +82,7 @@ async def list_documents():
 @router.delete("/delete/{filename}")
 async def delete_document(filename: str):
     """
-    Delete a specific document from the 'uploads/' folder.
+    Delete a specific document from the configured upload folder.
     """
     sanitized_filename = sanitize_filename(filename)
     file_path = os.path.join(UPLOAD_DIR, sanitized_filename)

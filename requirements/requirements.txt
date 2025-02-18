@@ -1,14 +1,31 @@
-gradio
+# Core utilities
+pyfiglet
+pytest
+requests
+types-requests
+httpx
+
+# FastAPI and Web Server
+fastapi
+uvicorn
+
+# PDF and Web Scraping
 pdfplumber
 beautifulsoup4
 chardet
 langdetect
+
+# Machine Learning & NLP
 sentence-transformers
 torch
 transformers
+nltk
+
+# Search and Retrieval
 duckduckgo-search
-requests
 langchain
 chromadb
+
+# Data Validation and Logging
 pydantic
 json-log-formatter

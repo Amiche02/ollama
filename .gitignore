@@ -10,3 +10,11 @@ wheels/
 .venv
 
 project_structure.json
+
+outputs
+outputs/docs
+outputs/search
+
+chroma_db
+
+backend/docs

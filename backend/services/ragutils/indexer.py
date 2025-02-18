@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any, Dict, List
 
 from services.ragutils.chroma_service import upsert_documents_with_embeddings
 from services.ragutils.embedder import EmbeddingService
@@ -90,20 +91,27 @@ class Indexer:
         logger.info(f"Indexing complete for document: {document_id}")
         return indexed_data
 
-    async def index_documents(self, documents: list) -> list:
+    async def index_documents(
+        self, documents: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """
         Asynchronously indexes multiple documents.
+
         Args:
-            documents (list): each dict includes:
-                - document_id (str)
-                - text (str)
-                - metadata (dict)
+            documents (List[Dict[str, Any]]): A list where each dict contains:
+                - "document_id" (str)
+                - "text" (str)
+                - "metadata" (dict)
 
         Returns:
-            list: List of indexed data for all documents.
+            List[Dict[str, Any]]: A list of indexed data for all documents.
         """
         tasks = [
             self._process_document(doc["document_id"], doc["text"], doc["metadata"])
             for doc in documents
         ]
-        return await asyncio.gather(*tasks)
+
+        results = await asyncio.gather(*tasks)
+
+        # ✅ Ensure mypy knows it's always a List[Dict[str, Any]]
+        return [result if isinstance(result, dict) else {} for result in results]

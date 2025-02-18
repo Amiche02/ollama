@@ -67,6 +67,7 @@ clean:
 	@rm -rf outputs
 	@rm -rf backend/docs
 	@rm -rf backend/chroma_db
+	@rm -rf nohup.out
 
 # ❌ Remove virtual environments (Conda & UV)
 clean_env:

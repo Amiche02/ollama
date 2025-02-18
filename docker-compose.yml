@@ -23,3 +23,7 @@ services:
       - ./entrypoint.sh:/entrypoint.sh
     restart: unless-stopped
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
+
+volumes:
+  - ./chroma_db:/chroma_db
+  - ./models:/models

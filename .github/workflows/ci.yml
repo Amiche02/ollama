@@ -29,7 +29,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements/requirements.txt
           pip install -r requirements/requirements.dev.txt
-          pip install types-requests types-nltk types-langdetect types-pyfiglet types-jsonschema types-PyYAML types-chardet
 
       - name: Run Pre-Commit Hooks
         run: pre-commit run --all-files

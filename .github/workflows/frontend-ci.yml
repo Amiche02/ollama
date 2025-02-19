@@ -1,0 +1,35 @@
+name: Build and Push Frontend Docker Image
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build the Frontend Docker image
+        run: |
+          docker build -f Dockerfile.frontend -t amiche/frontend:${{ github.sha }} -t amiche/frontend:latest .
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Install and run Container Structure Tests for Frontend
+        run: |
+          curl -LO https://github.com/GoogleContainerTools/container-structure-test/releases/latest/download/container-structure-test-linux-amd64
+          chmod +x container-structure-test-linux-amd64
+          mkdir -p $HOME/bin
+          export PATH=$PATH:$HOME/bin
+          mv container-structure-test-linux-amd64 $HOME/bin/container-structure-test
+          container-structure-test test --image amiche/frontend:${{ github.sha }} --config front-end/tests/cst-frontend.yml
+
+      - name: Push the Frontend Docker image
+        run: |
+          docker push amiche/frontend:${{ github.sha }}
+          docker push amiche/frontend:latest

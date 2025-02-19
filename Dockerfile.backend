@@ -45,8 +45,6 @@
     EXPOSE 8000
 
     # Set necessary environment variables
-    ENV NVIDIA_VISIBLE_DEVICES=all
-    ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
     ENV OLLAMA_URL=http://ollama:11434
 
     # Start the app via uvicorn

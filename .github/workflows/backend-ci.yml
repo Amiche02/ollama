@@ -29,12 +29,6 @@ jobs:
           mv container-structure-test-linux-amd64 $HOME/bin/container-structure-test
           container-structure-test test --image amiche/backend:${{ github.sha }} --config backend/tests/cst-backend.yml
 
-      - name: Install Grype
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-          grype sbom:./sbom-backend.json -o cyclonedx-json=cve-backend.json
-          ls
-
       - name: Push the Docker image
         run: |
           docker push amiche/backend:${{ github.sha }}

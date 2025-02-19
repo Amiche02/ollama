@@ -23,22 +23,24 @@
     # -------------------------------------------------------------------
     FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04
 
-    # (Optional) create non-root user for security
+    # Create non-root user for security
     RUN useradd --create-home appuser
     USER appuser
     WORKDIR /app
 
-    # Install Python in final image
+    # Switch to root to install Python in final image
     USER root
     RUN apt-get update && apt-get install -y --no-install-recommends \
         python3.11 python3-pip \
         && rm -rf /var/lib/apt/lists/*
+    # Create a symlink so that the command "python" works
+    RUN ln -s /usr/bin/python3.11 /usr/bin/python
     USER appuser
 
     # Copy site-packages from builder stage
     COPY --from=builder /usr/local /usr/local
 
-    # Copy the backend application code (note: our main file is now at /app/main.py)
+    # Copy the backend application code (the main file should be at /app/main.py)
     COPY backend/ /app/
 
     # Expose FastAPI port

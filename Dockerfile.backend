@@ -1,44 +1,58 @@
-# -------------------------
+# -------------------------------------------------------------------
 # 1) Builder Stage
-# -------------------------
-    FROM python:3.11-slim as builder
+#    - Install Python, then pip-install all dependencies
+# -------------------------------------------------------------------
+    FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04 AS builder
 
-    # Install system dependencies needed to build some packages
+    # Install Python and build tools
     RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
+        python3.11 python3-pip build-essential \
         && rm -rf /var/lib/apt/lists/*
 
     WORKDIR /app
 
-    # Copy only the requirements file
+    # Copy your dependencies file(s)
     COPY requirements/requirements.txt ./requirements.txt
 
-    # Upgrade pip and install Python dependencies
-    RUN pip install --upgrade pip
+    # Upgrade pip and install dependencies
+    RUN python3.11 -m pip install --upgrade pip
     RUN pip install --no-cache-dir -r requirements.txt
 
-    # -------------------------
+    # -------------------------------------------------------------------
     # 2) Final Stage
-    # -------------------------
-    FROM python:3.11-slim
+    # -------------------------------------------------------------------
+    FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04
 
-    # Create a non-root user for better security
+    # (Optional) create non-root user
     RUN useradd --create-home appuser
     USER appuser
-
     WORKDIR /app
 
-    # Copy installed dependencies from builder stage
+    # **We still need Python in final**:
+    # Option (A): Install Python again directly:
+    USER root
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3.11 python3-pip \
+        && rm -rf /var/lib/apt/lists/*
+    USER appuser
+
+    # Option (B) (alternative to installing again): copy binaries from builder
+    #  e.g. COPY --from=builder /usr/bin/python3.11 /usr/bin/python3.11
+    #  etc.
+    # (But installing in final is simpler if you don't mind the small overhead.)
+
+    # Copy site-packages from builder’s /usr/local to final
     COPY --from=builder /usr/local /usr/local
 
-    # Copier tout le dossier `backend/` dans `/app`
+    # Now copy your backend app code
     COPY backend/ /app/
 
-    # Expose the port (default for uvicorn is 8000)
+    # Expose FastAPI port
     EXPOSE 8000
 
-    # Set environment for Python
-    ENV PYTHONUNBUFFERED=1
+    # Let Docker know that we want GPU (NVIDIA) capabilities
+    ENV NVIDIA_VISIBLE_DEVICES=all
+    ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-    # The command to start FastAPI using Uvicorn
+    # Start the app via uvicorn
     CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -76,13 +76,29 @@ clean_env:
 	@conda remove --name $(ENV_NAME) --all -y || true  # Remove Conda environment (if exists)
 	@echo "✅ Environments removed successfully."
 
+
 # 🏗 Build & run Docker containers
+.PHONY: build
 build:
-	@docker-compose up --build -d
+	@docker compose up --build -d
+
+.PHONY: docker_clean
+docker_clean:
+	@docker stop $$(docker ps -q) || true
+	@docker container prune -f
+	@docker volume prune -f
+	@docker network prune -f
+	@docker builder prune -f
+	@docker image prune -f
 
 # 📦 Stop and remove Docker containers
+.PHONY: stop
 stop:
-	@docker-compose down
+	@docker compose down
+	@docker rmi -f $(docker images --format "{{.Repository}}:{{.Tag}}" | grep -E 'frontend|backend')
+
+stop_all:
+	@docker compose down --rmi all --volumes
 
 # 🛠 Run pre-commit hooks
 pre-commit:

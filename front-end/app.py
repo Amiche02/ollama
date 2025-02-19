@@ -1,301 +1,281 @@
 import os
+import re
 
-import gradio as gr
 import requests
+import streamlit as st
+from streamlit_chat import message
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+# ---------------------------
+#          BACKEND URLs
+# ---------------------------
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")  # For Docker usage
+CHAT_ENDPOINT = f"{BACKEND_URL}/chat/message/"
+MODELS_ENDPOINT = f"{BACKEND_URL}/chat/available_models/"
+DOCS_LIST_ENDPOINT = f"{BACKEND_URL}/docs/list/"
+UPLOAD_DOC_ENDPOINT = f"{BACKEND_URL}/docs/upload/"
+BUILD_VECTOR_ENDPOINT = f"{BACKEND_URL}/text-extraction/extract_and_store/"
 
-# -------------------------------------------------------------------
-# Helper functions to interact with the backend
-# -------------------------------------------------------------------
 
-
-def list_all_docs():
+# ---------------------------
+#       HELPER FUNCTIONS
+# ---------------------------
+def separate_think_from_answer(text: str):
     """
-    Returns a list of all documents in the 'uploads/' folder
-    by calling GET /docs/list.
+    Splits 'text' into (chain_of_thought, final_answer).
+    If <think> is not found, returns ("", text).
     """
-    try:
-        resp = requests.get(f"{BACKEND_URL}/docs/list", timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("documents", [])
-    except Exception as e:
-        raise RuntimeError(f"Error listing documents: {e}")
+    pattern = r"<think>(.*?)</think>"
+    match = re.search(pattern, text, flags=re.DOTALL)
+    if match:
+        chain_of_thought = match.group(1).strip()
+        # Remove entire <think>...</think> block from the text
+        final_answer = re.sub(pattern, "", text, flags=re.DOTALL).strip()
+        return chain_of_thought, final_answer
+    else:
+        # No <think> block
+        return "", text
 
 
-def list_vectorized_docs():
+def handle_streaming_response(resp):
     """
-    Returns a list of vectorized (indexed) documents
-    by calling GET /chromadb/list.
-
-    We assume the backend endpoint returns something like:
-       {"extracted_files": ["file1.pdf", "file2.txt", ...]}
-
-    Adjust if your Chroma route is different.
+    Reads chunked lines from 'resp' (requests.Response with stream=True),
+    accumulates them into partial_markdown, and displays partial updates
+    with st.markdown, while also checking for <think> blocks.
     """
-    try:
-        resp = requests.get(f"{BACKEND_URL}/chromadb/list", timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("extracted_files", [])
-    except Exception as e:
-        raise RuntimeError(f"Error listing vectorized docs: {e}")
+    partial_markdown = ""
+    stream_container = st.empty()
+
+    for chunk in resp.iter_lines():
+        if chunk:
+            chunk_text = chunk.decode("utf-8", errors="ignore")
+            # Remove leading "data: " if present
+            if chunk_text.startswith("data: "):
+                chunk_text = chunk_text[len("data: ") :]
+
+            # Accumulate chunk text
+            partial_markdown += chunk_text
+            # Live-update with markdown
+            stream_container.markdown(partial_markdown)
+
+    # At the end, separate chain-of-thought from final
+    chain_of_thought, final_answer = separate_think_from_answer(partial_markdown)
+    return chain_of_thought, final_answer
 
 
-def upload_documents(files):
-    """
-    Upload multiple documents to /docs/upload.
-    Returns a status string for each file.
-    """
-    results = []
-    for file in files:
-        # Accept only pdf, txt, md, etc.
-        # If you want to enforce it at the front-end level only:
-        if not (
-            file.name.lower().endswith(".pdf")
-            or file.name.lower().endswith(".txt")
-            or file.name.lower().endswith(".md")
-        ):
-            results.append(f"{file.name}: ❌ Invalid format.")
-            continue
+# ---------------------------
+#         PAGE CONFIG
+# ---------------------------
+st.set_page_config(page_title="RAG + Web Search Chatbot", layout="wide")
+st.title("AI Chatbot with RAG & Web Search")
+
+# ---------------------------
+#         SIDEBAR
+# ---------------------------
+st.sidebar.header("Configuration")
+
+# 1) Document Management
+st.sidebar.subheader("Document Management")
+uploaded_files = st.sidebar.file_uploader(
+    "Upload documents",
+    accept_multiple_files=True,
+    type=["pdf", "txt", "md", "html"],
+    help="Select one or more documents to upload",
+)
+if st.sidebar.button("Upload Documents"):
+    if uploaded_files:
+        files_to_upload = []
+        for upf in uploaded_files:
+            file_bytes = upf.read()
+            files_to_upload.append(
+                ("files", (upf.name, file_bytes, "application/octet-stream"))
+            )
+        try:
+            resp = requests.post(UPLOAD_DOC_ENDPOINT, files=files_to_upload, timeout=60)
+            if resp.status_code == 200:
+                st.sidebar.success("Documents uploaded successfully!")
+            else:
+                st.sidebar.error(f"Upload failed: {resp.text}")
+        except Exception as e:
+            st.sidebar.error(f"Upload error: {e}")
+    else:
+        st.sidebar.warning("No files selected.")
+
+# 2) Existing Documents
+st.sidebar.write("---")
+st.sidebar.subheader("Existing Documents")
+try:
+    docs_list_resp = requests.get(DOCS_LIST_ENDPOINT, timeout=10)
+    if docs_list_resp.status_code == 200:
+        document_options = docs_list_resp.json().get("documents", [])
+    else:
+        st.sidebar.error(f"Error listing docs: {docs_list_resp.text}")
+        document_options = []
+except Exception as e:
+    st.sidebar.error(f"Could not fetch documents: {e}")
+    document_options = []
+
+if document_options:
+    st.sidebar.write("Available documents:")
+    for doc in document_options:
+        st.sidebar.write(f"- {doc}")
+
+# 3) Build Vector Base
+if document_options:
+    st.sidebar.write("---")
+    st.sidebar.subheader("Build Vector Base")
+    selected_docs = st.sidebar.multiselect(
+        "Select docs for indexing:", document_options
+    )
+    if st.sidebar.button("Index Documents"):
+        if selected_docs:
+            try:
+                payload = {"filenames": selected_docs}
+                index_resp = requests.post(
+                    BUILD_VECTOR_ENDPOINT, json=payload, timeout=60
+                )
+                if index_resp.status_code == 200:
+                    st.sidebar.success("Vector DB updated successfully!")
+                else:
+                    st.sidebar.error(f"Vectorization failed: {index_resp.text}")
+            except Exception as e:
+                st.sidebar.error(f"Indexing error: {e}")
+        else:
+            st.sidebar.warning("No documents selected for indexing.")
+
+# 4) Model & Personality
+st.sidebar.write("---")
+st.sidebar.subheader("Model Settings")
+try:
+    models_resp = requests.get(MODELS_ENDPOINT, timeout=10)
+    if models_resp.status_code == 200:
+        available_models = models_resp.json().get("models", [])
+    else:
+        st.sidebar.error(f"Could not fetch models: {models_resp.text}")
+        available_models = []
+except Exception as e:
+    st.sidebar.error(f"Error fetching models: {e}")
+    available_models = []
+
+if not available_models:
+    available_models = ["llama3.2:latest"]  # fallback
+
+selected_model = st.sidebar.selectbox("Choose AI Model:", options=available_models)
+
+personality_options = [
+    "Casual",
+    "DeepThinker",
+    "KnowledgeNavigator",
+    "Investigator",
+    "Universal",
+    "Facilitator",
+]
+selected_personality = st.sidebar.selectbox("Choose Personality:", personality_options)
+
+# 5) Retrieval & Streaming
+st.sidebar.write("---")
+st.sidebar.subheader("Retrieval & Streaming")
+use_rag = st.sidebar.checkbox("Enable RAG (Vector Search)", value=True)
+use_web_search = st.sidebar.checkbox("Enable Web Search", value=False)
+stream_response = st.sidebar.checkbox("Enable Streaming Mode", value=False)
+
+# ---------------------------
+#         MAIN CHAT
+# ---------------------------
+st.write("Chat with your AI assistant below. Use RAG/WebSearch for smarter responses.")
+
+# Keep chat history in session_state
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
+
+# Display existing conversation
+for i, chat_msg in enumerate(st.session_state["chat_history"]):
+    role = chat_msg["role"]
+    # We'll store chain_of_thought separately if you want
+    chain_of_thought = chat_msg.get("thought", "")
+    content = chat_msg["content"]
+
+    if chain_of_thought:
+        # Optionally show chain_of_thought behind an expander
+        with st.expander(f"Chain-of-thought (hidden) for message {i}"):
+            st.markdown(f"```\n{chain_of_thought}\n```")
+
+    message(content, is_user=(role == "user"), key=f"chat_{i}")
+
+st.write("---")
+user_input = st.text_input("Enter your message:", "")
+
+# Single-message web search toggle
+single_search_toggle = st.checkbox("Web Search only for this query?")
+
+# Send logic
+if st.button("Send"):
+    if not user_input.strip():
+        st.warning("Please enter a message.")
+    else:
+        # Add user message
+        st.session_state["chat_history"].append({"role": "user", "content": user_input})
+
+        payload = {
+            "model_name": selected_model,
+            "user_message": user_input,
+            "personality": selected_personality,
+            "use_web_search": (single_search_toggle or use_web_search),
+            "use_rag": use_rag,
+            "stream": stream_response,
+        }
 
         try:
-            files_param = {
-                "files": (file.name, file, file.type or "application/octet-stream")
-            }
-            resp = requests.post(
-                f"{BACKEND_URL}/docs/upload", files=files_param, timeout=60
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            results.append(f"{file.name}: ✅ {data}")
-        except Exception as e:
-            results.append(f"{file.name}: ❌ Error: {str(e)}")
-    return "\n".join(results)
+            with requests.post(
+                CHAT_ENDPOINT, json=payload, stream=stream_response, timeout=300
+            ) as resp:
+                if resp.status_code == 200:
+                    if stream_response:
+                        # SSE or chunked text => streaming
+                        chain_of_thought, final_answer = handle_streaming_response(resp)
+                        # Save final to chat
+                        st.session_state["chat_history"].append(
+                            {
+                                "role": "ai",
+                                "content": final_answer,
+                                "thought": chain_of_thought,
+                            }
+                        )
+                    else:
+                        # Non-stream => final JSON
+                        data = resp.json()
+                        raw_ai_response = data.get("message", "")
 
+                        # separate <think> from the final
+                        chain_of_thought, final_answer = separate_think_from_answer(
+                            raw_ai_response
+                        )
 
-def vectorize_documents(docs_to_vectorize):
-    """
-    Calls POST /text-extraction/extract_and_store with a list of filenames
-    to embed them in Chroma.
+                        # Show sources
+                        if "sources" in data:
+                            with st.expander("Sources & References"):
+                                st.json(data["sources"])
 
-    Body format:
-      {"filenames": ["doc1.pdf", "doc2.txt", ...]}
-    """
-    if not docs_to_vectorize:
-        return "No documents selected to vectorize."
-    try:
-        payload = {"filenames": docs_to_vectorize}
-        resp = requests.post(
-            f"{BACKEND_URL}/text-extraction/extract_and_store",
-            json=payload,
-            timeout=120,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return f"Vectorization done:\n{data}"
-    except Exception as e:
-        return f"Error while vectorizing: {str(e)}"
-
-
-def delete_document(filename):
-    """
-    Deletes a document from local disk ( /docs/delete/{filename} )
-    and also tries to remove from Chroma ( /chromadb/delete/{filename} )
-    so that doc + vectors are both removed.
-    """
-    if not filename:
-        return "No filename provided."
-    # 1) Delete the doc from /docs
-    try:
-        resp = requests.delete(f"{BACKEND_URL}/docs/delete/{filename}", timeout=30)
-        resp.raise_for_status()
-        doc_msg = resp.json()
-    except Exception as e:
-        return f"Failed to delete doc {filename}: {str(e)}"
-
-    # 2) Delete from Chroma
-    try:
-        resp = requests.delete(f"{BACKEND_URL}/chromadb/delete/{filename}", timeout=30)
-        resp.raise_for_status()
-        vector_msg = resp.json()
-    except Exception as e:
-        return f"Document removed locally, but could not remove vectors: {str(e)}"
-
-    return f"✅ {doc_msg}\n✅ {vector_msg}"
-
-
-def get_personality_prompts():
-    """
-    If you want to dynamically fetch the personality list from the backend,
-    you could do so. Otherwise, return a static list.
-    """
-    return [
-        "Universal",
-        "Casual",
-        "DeepThinker",
-        "KnowledgeNavigator",
-        "Investigator",
-        "Facilitator",
-    ]
-
-
-def chat_with_backend(model_name, personality, user_message, use_web, use_rag):
-    """
-    Send a chat request to /chat/message
-    Return the text response. We'll display it as markdown in Gradio.
-    """
-    if not user_message.strip():
-        return "⚠️ Please type a message."
-
-    payload = {
-        "model_name": model_name,
-        "user_message": user_message,
-        "personality": personality,
-        "use_web_search": use_web,
-        "use_rag": use_rag,
-        "stream": False,  # if you want streaming, you'd implement differently
-    }
-    try:
-        resp = requests.post(f"{BACKEND_URL}/chat/message", json=payload, timeout=120)
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("message", "No response from AI.")
-    except Exception as e:
-        return f"❌ Error from backend: {str(e)}"
-
-
-# -------------------------------------------------------------------
-#  Gradio Interface
-# -------------------------------------------------------------------
-
-
-def build_ui():
-    with gr.Blocks() as demo:
-        gr.Markdown("# RAG Backend - Gradio UI")
-
-        with gr.Tab("Document Management"):
-            gr.Markdown("## Manage Documents")
-            with gr.Row():
-                file_uploader = gr.File(
-                    label="Upload Documents (PDF, TXT, MD only)",
-                    file_count="multiple",
-                    type="file",
-                )
-                upload_button = gr.Button("Upload")
-            upload_results = gr.Textbox(label="Upload Results", interactive=False)
-
-            gr.Markdown("### Vectorization")
-            with gr.Row():
-                refresh_docs_button = gr.Button("Refresh Doc List")
-                vectorize_button = gr.Button("Vectorize Selected Documents")
-            docs_status = gr.Textbox(label="Status", interactive=False, lines=5)
-
-            # We'll show two checklists: non-vectorized & vectorized
-            non_vectorized_list = gr.CheckboxGroup(
-                choices=[], label="Non-Vectorized Documents"
-            )
-            vectorized_list = gr.CheckboxGroup(choices=[], label="Vectorized Documents")
-            delete_button = gr.Button("Delete Selected Docs")
-
-            # -- define interactions for document management
-            def on_upload(files):
-                return upload_documents(files)
-
-            upload_button.click(
-                fn=on_upload, inputs=[file_uploader], outputs=[upload_results]
-            )
-
-            def refresh_docs():
-                try:
-                    all_docs = list_all_docs()
-                    vec_docs = list_vectorized_docs()
-                    not_vec = sorted(set(all_docs) - set(vec_docs))
-                    return (
-                        gr.update(choices=not_vec, value=[]),
-                        gr.update(choices=vec_docs, value=[]),
-                        "Lists refreshed.",
+                        # Add to chat
+                        st.session_state["chat_history"].append(
+                            {
+                                "role": "ai",
+                                "content": final_answer,
+                                "thought": chain_of_thought,
+                            }
+                        )
+                else:
+                    error_msg = f"AI Error: {resp.text}"
+                    st.session_state["chat_history"].append(
+                        {"role": "ai", "content": error_msg}
                     )
-                except Exception as e:
-                    return gr.update(), gr.update(), f"Error: {str(e)}"
-
-            refresh_docs_button.click(
-                fn=refresh_docs,
-                inputs=[],
-                outputs=[non_vectorized_list, vectorized_list, docs_status],
+        except Exception as e:
+            st.session_state["chat_history"].append(
+                {"role": "ai", "content": f"Exception: {e}"}
             )
 
-            def do_vectorize(selected_docs):
-                if not selected_docs:
-                    return "No documents selected."
-                result = vectorize_documents(selected_docs)
-                return result
+        st.experimental_rerun()
 
-            vectorize_button.click(
-                fn=do_vectorize, inputs=[non_vectorized_list], outputs=[docs_status]
-            )
-
-            def do_delete(selected_non_vec, selected_vec):
-                # We'll delete from whichever list they're in
-                # Combined = selected_non_vec + selected_vec
-                if not (selected_non_vec or selected_vec):
-                    return "No documents selected."
-                combined = list(set(selected_non_vec + selected_vec))
-
-                msgs = []
-                for doc in combined:
-                    msgs.append(delete_document(doc))
-                return "\n\n".join(msgs)
-
-            delete_button.click(
-                fn=do_delete,
-                inputs=[non_vectorized_list, vectorized_list],
-                outputs=[docs_status],
-            )
-
-        with gr.Tab("Chat"):
-            gr.Markdown("## Chat with the AI")
-            with gr.Row():
-                model_input = gr.Textbox(label="Model name", value="all-MiniLM-L12-v2")
-                personality_dropdown = gr.Dropdown(
-                    label="Personality Prompt",
-                    choices=get_personality_prompts(),
-                    value="Universal",
-                )
-            with gr.Row():
-                use_websearch_checkbox = gr.Checkbox(
-                    label="Use Web Search?", value=False
-                )
-                use_rag_checkbox = gr.Checkbox(
-                    label="Use Document Retrieval?", value=False
-                )
-
-            user_message = gr.Textbox(
-                label="Your Message", lines=3, placeholder="Type something..."
-            )
-            chat_button = gr.Button("Send Message")
-            chat_output = gr.Markdown(label="AI Response")
-
-            def on_chat(model, pers, msg, w_search, rag):
-                return chat_with_backend(model, pers, msg, w_search, rag)
-
-            chat_button.click(
-                fn=on_chat,
-                inputs=[
-                    model_input,
-                    personality_dropdown,
-                    user_message,
-                    use_websearch_checkbox,
-                    use_rag_checkbox,
-                ],
-                outputs=chat_output,
-            )
-
-    return demo
-
-
-if __name__ == "__main__":
-    # Launch the Gradio app
-    ui = build_ui()
-    ui.launch(server_name="127.0.0.1", server_port=7860)
+# Clear Chat Button
+if st.button("Clear Conversation"):
+    st.session_state["chat_history"].clear()
+    st.experimental_rerun()

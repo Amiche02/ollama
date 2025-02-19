@@ -30,3 +30,5 @@ json-log-formatter
 
 # CLI, ASCII arts
 pyfiglet
+
+python-multipart

@@ -49,8 +49,9 @@ curl -X GET "http://127.0.0.1:8000/chromadb/get/{filename}"
 ### 📤 **Upload Documents**
 ```sh
 curl -X POST "http://127.0.0.1:8000/docs/upload/" \
-     -F "files=@/path/to/your/file1.pdf" \
-     -F "files=@/path/to/your/file2.txt"
+     -F "files=@/home/amiche/Downloads/linalgebra-sample.pdf" \
+     -F "files=@/home/amiche/Documents/Obsidian/Entrepreneuriat/Projet d'Entreprise Multifonctionnelle en Afrique.md" \
+     -F "files=@/home/amiche/Documents/JUNIA/HADOOP/3.0_PySpark.pdf"
 ```
 
 ### 📂 **List Uploaded Documents**
@@ -122,7 +123,7 @@ curl -X DELETE "http://127.0.0.1:8000/chat/clear_history/"
 curl -X POST "http://127.0.0.1:8000/chat/message/" \
      -H "Content-Type: application/json" \
      -d '{
-           "model_name": "deepseek-r1",
+           "model_name": "llama3.2:latest",
            "user_message": "What are the latest advancements in AI?",
            "use_web_search": true,
            "use_rag": true,
@@ -135,7 +136,7 @@ curl -X POST "http://127.0.0.1:8000/chat/message/" \
 curl -X POST "http://127.0.0.1:8000/chat/message/" \
      -H "Content-Type: application/json" \
      -d '{
-           "model_name": "deepseek-r1",
+           "model_name": "llama3.2:latest",
            "user_message": "What are the best DevOps practices?",
            "use_web_search": true,
            "use_rag": false,
@@ -146,14 +147,16 @@ curl -X POST "http://127.0.0.1:8000/chat/message/" \
 ### **3️⃣ Only RAG (No Streaming)**
 ```bash
 curl -X POST "http://127.0.0.1:8000/chat/message/" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "model_name": "deepseek-r1",
-           "user_message": "Explain Kubernetes architecture.",
-           "use_web_search": false,
-           "use_rag": true,
-           "stream": false
-         }'
+  -H "Content-Type: application/json" \
+  -d '{
+    "model_name": "llama3.2:latest",
+    "personality": "Casual",
+    "user_message": "What is Spark ?",
+    "use_web_search": true,
+    "use_rag": true,
+    "stream": false
+  }'
+
 ```
 
 ### **4️⃣ Neither Web Search nor RAG (Direct Response)**
@@ -161,7 +164,7 @@ curl -X POST "http://127.0.0.1:8000/chat/message/" \
 curl -X POST "http://127.0.0.1:8000/chat/message/" \
      -H "Content-Type: application/json" \
      -d '{
-           "model_name": "deepseek-r1",
+           "model_name": "llama3.2:latest",
            "user_message": "Tell me about black holes.",
            "use_web_search": false,
            "use_rag": false,

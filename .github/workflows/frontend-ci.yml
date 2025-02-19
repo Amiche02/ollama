@@ -1,0 +1,60 @@
+name: Build and Push Backend Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build the Docker image
+        run: |
+          docker build -t amiche/backend:${{ github.sha }} -t amiche/backend:latest .
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Install and run Container Structure Tests
+        run: |
+          curl -LO https://github.com/GoogleContainerTools/container-structure-test/releases/latest/download/container-structure-test-linux-amd64
+          chmod +x container-structure-test-linux-amd64
+          mkdir -p $HOME/bin
+          export PATH=$PATH:$HOME/bin
+          mv container-structure-test-linux-amd64 $HOME/bin/container-structure-test
+          container-structure-test test --image amiche/backend:${{ github.sha }} --config tests/cst-advancedv2.yaml
+
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft amiche/backend:${{ github.sha }} -o spdx-json=sbom-backend.json
+          ls
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype sbom:./sbom-backend.json -o cyclonedx-json=cve-backend.json
+          ls
+
+      - name: Push the Docker image
+        run: |
+          docker push amiche/backend:${{ github.sha }}
+          docker push amiche/backend:latest
+
+      - name: Install ORAS
+        run: |
+          VERSION="1.2.2"
+          curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz"
+          mkdir -p oras-install/
+          tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/
+          sudo mv oras-install/oras /usr/local/bin/
+          rm -rf oras_${VERSION}_*.tar.gz oras-install/
+
+      - name: Attach files to an existing artifact with ORAS
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | oras login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          oras push amiche/backend/artifact:sbom-${{ github.sha }} --artifact-type example/sbom sbom-backend.json
+          oras push amiche/backend/artifact:cve-${{ github.sha }} --artifact-type example/cve cve-backend.json

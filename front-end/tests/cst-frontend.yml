@@ -5,10 +5,10 @@ fileExistenceTests:
   - name: Check main Streamlit app exists
     path: /app/app.py
     shouldExist: true
-  - name: Ensure front-end source directory is not copied
+  - name: Ensure front-end source directory is not present in final image
     path: /app/front-end
     shouldExist: false
-  - name: Dockerfile.frontend should not be in final image
+  - name: Ensure Dockerfile.frontend is not present in final image
     path: /app/Dockerfile.frontend
     shouldExist: false
 
@@ -29,7 +29,6 @@ metadataTest:
     - key: PATH
       value: "/home/appuser/.local/bin:.*"
       isRegex: true
-
     - key: BACKEND_URL
-      value: ".*8000.*"
+      value: "http://backend:8000"
       isRegex: true

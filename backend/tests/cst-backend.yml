@@ -2,17 +2,15 @@
 schemaVersion: 2.0.0
 
 fileExistenceTests:
-  - name: Ensure backend main.py exists
-    path: /app/backend/main.py
+  - name: Check main FastAPI app exists
+    path: /app/main.py
     shouldExist: true
-
-  - name: Ensure Dockerfile.backend does not remain in final image
+  - name: Ensure Dockerfile.backend is not present in final image
     path: /app/Dockerfile.backend
     shouldExist: false
-
-  - name: Ensure venv is present
-    path: /app/.venv
-    shouldExist: true
+  - name: Ensure backend source folder is not copied
+    path: /app/backend
+    shouldExist: false
 
 commandTests:
   - name: Python version
@@ -22,26 +20,18 @@ commandTests:
   - name: Python path
     command: which
     args: ["python"]
-    expectedOutput: ["/app/.venv/bin/python.*"]   # Regex for path
-  - name: Check user
+    expectedOutput: ["/usr/bin/python3.11.*"]
+  - name: Check user is appuser
     command: whoami
-    expectedOutput: ["appuser"]  # or 'nonroot' if you prefer
+    expectedOutput: ["appuser"]
 
 metadataTest:
-  # Check that the Dockerfile sets WORKDIR /app
-  workdir: "/app"
-
-  # The backend container typically exposes port 8000
+  workdir: /app
   exposedPorts: ["8000"]
-
-  # Check environment variables if needed
   envVars:
-    # OLLAMA_URL is set in docker-compose to http://ollama:11434
     - key: OLLAMA_URL
-      value: ".*11434.*"
-      isRegex: true
-
-    # Confirm the PATH includes your virtual environment
-    - key: PATH
-      value: "/app/.venv/bin:.*"
-      isRegex: true
+      value: "http://ollama:11434"
+      isRegex: false
+    - key: NVIDIA_VISIBLE_DEVICES
+      value: "all"
+      isRegex: false

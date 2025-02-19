@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------
 # 1) Builder Stage
-#    - Install Python, then pip-install all dependencies
+#    - Install Python & build tools, then pip‑install all dependencies
 # -------------------------------------------------------------------
     FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04 AS builder
 
@@ -23,36 +23,31 @@
     # -------------------------------------------------------------------
     FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04
 
-    # (Optional) create non-root user
+    # (Optional) create non-root user for security
     RUN useradd --create-home appuser
     USER appuser
     WORKDIR /app
 
-    # **We still need Python in final**:
-    # Option (A): Install Python again directly:
+    # Install Python in final image
     USER root
     RUN apt-get update && apt-get install -y --no-install-recommends \
         python3.11 python3-pip \
         && rm -rf /var/lib/apt/lists/*
     USER appuser
 
-    # Option (B) (alternative to installing again): copy binaries from builder
-    #  e.g. COPY --from=builder /usr/bin/python3.11 /usr/bin/python3.11
-    #  etc.
-    # (But installing in final is simpler if you don't mind the small overhead.)
-
-    # Copy site-packages from builder’s /usr/local to final
+    # Copy site-packages from builder stage
     COPY --from=builder /usr/local /usr/local
 
-    # Now copy your backend app code
+    # Copy the backend application code (note: our main file is now at /app/main.py)
     COPY backend/ /app/
 
     # Expose FastAPI port
     EXPOSE 8000
 
-    # Let Docker know that we want GPU (NVIDIA) capabilities
+    # Set necessary environment variables
     ENV NVIDIA_VISIBLE_DEVICES=all
     ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    ENV OLLAMA_URL=http://ollama:11434
 
     # Start the app via uvicorn
     CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

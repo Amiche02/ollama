@@ -33,9 +33,3 @@ jobs:
         run: |
           docker push amiche/backend:${{ github.sha }}
           docker push amiche/backend:latest
-
-      - name: Attach files to an existing artifact with ORAS
-        run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | oras login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          oras push amiche/backend/artifact:sbom-${{ github.sha }} --artifact-type example/sbom sbom-backend.json
-          oras push amiche/backend/artifact:cve-${{ github.sha }} --artifact-type example/cve cve-backend.json

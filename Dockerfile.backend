@@ -1,44 +1,53 @@
-# -------------------------
+# -------------------------------------------------------------------
 # 1) Builder Stage
-# -------------------------
-    FROM python:3.11-slim as builder
+#    - Install Python & build tools, then pip‑install all dependencies
+# -------------------------------------------------------------------
+    FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04 AS builder
 
-    # Install system dependencies needed to build some packages
+    # Install Python and build tools
     RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
+        python3.11 python3-pip build-essential \
         && rm -rf /var/lib/apt/lists/*
 
     WORKDIR /app
 
-    # Copy only the requirements file
+    # Copy your dependencies file(s)
     COPY requirements/requirements.txt ./requirements.txt
 
-    # Upgrade pip and install Python dependencies
-    RUN pip install --upgrade pip
+    # Upgrade pip and install dependencies
+    RUN python3.11 -m pip install --upgrade pip
     RUN pip install --no-cache-dir -r requirements.txt
 
-    # -------------------------
+    # -------------------------------------------------------------------
     # 2) Final Stage
-    # -------------------------
-    FROM python:3.11-slim
+    # -------------------------------------------------------------------
+    FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04
 
-    # Create a non-root user for better security
+    # Create non-root user for security
     RUN useradd --create-home appuser
     USER appuser
-
     WORKDIR /app
 
-    # Copy installed dependencies from builder stage
+    # Switch to root to install Python in final image
+    USER root
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3.11 python3-pip \
+        && rm -rf /var/lib/apt/lists/*
+    # Create a symlink so that the command "python" works
+    RUN ln -s /usr/bin/python3.11 /usr/bin/python
+    USER appuser
+
+    # Copy site-packages from builder stage
     COPY --from=builder /usr/local /usr/local
 
-    # Copier tout le dossier `backend/` dans `/app`
+    # Copy the backend application code (the main file should be at /app/main.py)
     COPY backend/ /app/
 
-    # Expose the port (default for uvicorn is 8000)
+    # Expose FastAPI port
     EXPOSE 8000
 
-    # Set environment for Python
-    ENV PYTHONUNBUFFERED=1
+    # Set necessary environment variables
+    ENV OLLAMA_URL=http://ollama:11434
 
-    # The command to start FastAPI using Uvicorn
+    # Start the app via uvicorn
     CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

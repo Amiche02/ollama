@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Start Ollama in the background.
+/bin/ollama serve &
+
 # Record Process ID.
 pid=$!
 
@@ -7,7 +10,7 @@ pid=$!
 sleep 5
 
 ollama pull llama3.2
-ollama pull qwen
+ollama pull deepseek-r1:1.5b
 echo "🟢 Done!"
 
 # Wait for Ollama process to finish.

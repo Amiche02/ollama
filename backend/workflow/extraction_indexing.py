@@ -48,7 +48,7 @@ class ExtractionIndexingWorkflow:
         tasks = [self._process_single_document(doc) for doc in documents]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # ✅ Ensure only valid dictionaries are returned and filter out errors
+        # Ensure only valid dictionaries are returned and filter out errors
         final_results: List[Dict[str, Any]] = [
             result for result in results if isinstance(result, dict)
         ]
@@ -79,14 +79,17 @@ class ExtractionIndexingWorkflow:
             logger.info(f"Extraction succeeded for document: {doc_id}")
 
             # 2) Index the document (segments + embeddings)
-            indexed_data = await self.indexer._process_document(
+            indexed_data: Dict[str, Any] = await self.indexer._process_document(
                 document_id=doc_id, text=extraction_result.text or "", metadata=metadata
             )
 
             logger.info(
-                f"Document {doc_id} indexed successfully with {len(indexed_data['chunks'])} chunks."
+                f"Document {doc_id} indexed successfully with {len(indexed_data.get('chunks', []))} chunks."
             )
-            return indexed_data
+            return indexed_data  # Ensured it's always a Dict[str, Any]
+
         except Exception as e:
             logger.error(f"Failed to process document {doc_id}: {str(e)}")
-            return {}  # ✅ Ensure we return a dict, not an exception
+
+            # 🔍 Explicitly return a correctly structured empty dictionary:
+            return {"document_id": doc_id, "chunks": [], "error": str(e)}

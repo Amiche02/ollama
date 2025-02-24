@@ -37,7 +37,8 @@ TEXT_EXTRACTOR_CONFIG = TextExtractorConfig(
             "md": "extract_text_from_text",
             "html": "extract_text_from_html",
         },
-    )
+    ),
+    temp_upload_dir="docs/uploads",
 )
 
 # Define available embedding models

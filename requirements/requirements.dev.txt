@@ -1,2 +1,6 @@
-ruff
+# Developer / CI Tools
 pre-commit
+mypy
+pytest
+ruff
+bandit

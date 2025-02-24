@@ -18,3 +18,4 @@ outputs/search
 chroma_db
 
 backend/docs
+nohup.out

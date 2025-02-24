@@ -1,0 +1,41 @@
+# -------------------------------------------------------------------------
+# 1) Builder Stage - Install Python & dependencies for frontend
+# -------------------------------------------------------------------------
+    FROM python:3.11-slim AS builder
+
+    WORKDIR /app
+
+    # Create a non-root user for security
+    RUN useradd --create-home appuser
+    USER appuser
+
+    # Copy and install frontend dependencies
+    COPY requirements/requirements.frontend.txt /app/requirements.txt
+    RUN pip install --no-cache-dir -r requirements.txt
+
+    # -------------------------------------------------------------------------
+    # 2) Final Stage - Copy only necessary files
+    # -------------------------------------------------------------------------
+    FROM python:3.11-slim
+
+    WORKDIR /app
+
+    # Create a non-root user for security
+    RUN useradd --create-home appuser
+    USER appuser
+
+    # Copy dependencies from the builder stage
+    COPY --from=builder /home/appuser/.local /home/appuser/.local
+    ENV PATH="/home/appuser/.local/bin:$PATH"
+
+    # (Optionally, if you need to reference the backend from the frontend:)
+    ENV BACKEND_URL=http://backend:8000
+
+    # Copy the frontend application code
+    COPY front-end/ /app/
+
+    # Expose the port for Streamlit
+    EXPOSE 8501
+
+    # Run Streamlit
+    CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]

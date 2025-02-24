@@ -61,7 +61,7 @@ class DuckDuckGoSearchService(WebSearchService):
             resp.raise_for_status()
         except requests.RequestException as e:
             print(f"Error fetching {url}: {e}")
-            return ""
+            return ""  # ✅ Ensures a string is always returned
 
         soup = BeautifulSoup(resp.content, "lxml")
 
@@ -71,12 +71,7 @@ class DuckDuckGoSearchService(WebSearchService):
 
         text = soup.get_text(separator="\n").strip()
 
-        # Ensure text is meaningful (avoid empty text)
-        if len(text) < 100:  # Can be adjusted
-            print(f"⚠️ Skipping {url} (too little text extracted)")
-            return ""
-
-        return text
+        return text if text else ""
 
     def search_and_scrape(self, query: str) -> List[Dict]:
         raw_results = self._search_duckduckgo(query)

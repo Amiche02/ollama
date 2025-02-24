@@ -1,6 +1,4 @@
 # Core utilities
-pyfiglet
-pytest
 requests
 types-requests
 httpx
@@ -29,3 +27,8 @@ chromadb
 # Data Validation and Logging
 pydantic
 json-log-formatter
+
+# CLI, ASCII arts
+pyfiglet
+
+python-multipart

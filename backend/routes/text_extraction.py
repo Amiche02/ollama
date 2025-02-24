@@ -2,6 +2,7 @@ import asyncio
 import os
 from typing import Dict, List
 
+from config.config import TEXT_EXTRACTOR_CONFIG
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.ragutils.chroma_service import upsert_documents_with_embeddings
@@ -11,7 +12,7 @@ from services.ragutils.text_extractor import TextExtractor
 
 router = APIRouter(prefix="/text-extraction", tags=["Text Extraction"])
 
-UPLOAD_DIR = "docs/uploads"
+UPLOAD_DIR = TEXT_EXTRACTOR_CONFIG.temp_upload_dir
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 text_extractor = TextExtractor()

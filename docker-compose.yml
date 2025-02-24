@@ -8,9 +8,23 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_URL=http://ollama:11434
     depends_on:
       - ollama
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: my-frontend:latest
+    container_name: frontend
+    ports:
+      - "7860:7860"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
     restart: unless-stopped
 
   ollama:
@@ -20,6 +34,8 @@ services:
       - "11434:11434"
     volumes:
       - ./models:/models
-      - ./entrypoint.sh:/entrypoint.sh
     restart: unless-stopped
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
+volumes:
+  chroma_db:
+  models:

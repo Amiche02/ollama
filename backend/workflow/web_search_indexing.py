@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from services.ragutils import CustomSegment, EmbeddingService, Indexer, WebSearchService
 
@@ -31,7 +31,7 @@ class WebSearchIndexingWorkflow:
         self.embedder = embedder if embedder else EmbeddingService()
         self.indexer = Indexer(segmenter=self.segmenter, embedder=self.embedder)
 
-    async def search_and_index(self, query: str) -> List[Dict]:
+    async def search_and_index(self, query: str) -> List[Dict[str, Any]]:
         """
         1) search_and_scrape for `query`
         2) chunk each result
@@ -41,15 +41,17 @@ class WebSearchIndexingWorkflow:
         logger.info(f"Starting web search for query: {query}")
 
         # 1) Perform the search
-        raw_results = self.search_service.search_and_scrape(query)
+        raw_results: List[Dict[str, Any]] = self.search_service.search_and_scrape(
+            query
+        )  # Explicit type annotation
         logger.info(f"Got {len(raw_results)} results for query: {query}")
 
         # 2) Prepare a list of "documents" to feed to the indexer
-        documents_to_process = []
+        documents_to_process: List[Dict[str, Any]] = []
         for i, result in enumerate(raw_results):
             doc_id = f"web-{i}"
-            text_content = result.get("raw_text", "")
-            meta = {
+            text_content: str = result.get("raw_text", "")
+            meta: Dict[str, Any] = {
                 "title": result.get("title", ""),
                 "url": result.get("url", ""),
                 "snippet": result.get("body_snippet", ""),
@@ -59,8 +61,11 @@ class WebSearchIndexingWorkflow:
             )
 
         # 3) Index them (async)
-        indexed_data_list = await self.indexer.index_documents(documents_to_process)
+        indexed_data_list: List[Dict[str, Any]] = await self.indexer.index_documents(
+            documents_to_process
+        )  # Explicit type annotation
         logger.info(
             f"Completed indexing {len(indexed_data_list)} documents from web search."
         )
+
         return indexed_data_list

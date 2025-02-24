@@ -20,7 +20,7 @@ services:
     image: my-frontend:latest
     container_name: frontend
     ports:
-      - "7860:7860"
+      - "8501:8501"
     environment:
       - BACKEND_URL=http://backend:8000
     depends_on:
@@ -34,8 +34,10 @@ services:
       - "11434:11434"
     volumes:
       - ./models:/models
+      - ./entrypoint.sh:/entrypoint.sh
     restart: unless-stopped
-    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+    entrypoint: ["/bin/bash", "./entrypoint.sh"]
+
 volumes:
   chroma_db:
   models:

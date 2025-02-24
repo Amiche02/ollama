@@ -95,7 +95,7 @@ docker_clean:
 .PHONY: stop
 stop:
 	@docker compose down
-	@docker rmi -f $(docker images --format "{{.Repository}}:{{.Tag}}" | grep -E 'frontend|backend')
+	@docker rmi $(docker images -f "dangling=true" -q)
 
 stop_all:
 	@docker compose down --rmi all --volumes

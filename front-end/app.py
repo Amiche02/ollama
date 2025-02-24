@@ -131,7 +131,7 @@ if document_options:
             try:
                 payload = {"filenames": selected_docs}
                 index_resp = requests.post(
-                    BUILD_VECTOR_ENDPOINT, json=payload, timeout=60
+                    BUILD_VECTOR_ENDPOINT, json=payload, timeout=500
                 )
                 if index_resp.status_code == 200:
                     st.sidebar.success("Vector DB updated successfully!")
@@ -273,9 +273,9 @@ if st.button("Send"):
                 {"role": "ai", "content": f"Exception: {e}"}
             )
 
-        st.experimental_rerun()
+        st.rerun()
 
 # Clear Chat Button
 if st.button("Clear Conversation"):
     st.session_state["chat_history"].clear()
-    st.experimental_rerun()
+    st.rerun()
